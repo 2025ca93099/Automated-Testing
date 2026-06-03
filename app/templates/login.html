@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NSP-4-S2-S25App — Login</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: Arial, sans-serif; background: #f0f2f5; display: flex;
+               justify-content: center; align-items: center; min-height: 100vh; }
+        .card { background: #fff; padding: 40px; border-radius: 8px;
+                box-shadow: 0 2px 12px rgba(0,0,0,.12); width: 360px; }
+        h1 { font-size: 22px; margin-bottom: 6px; color: #333; text-align: center; }
+        .subtitle { font-size: 12px; color: #888; text-align: center; margin-bottom: 28px; }
+        label { display: block; font-size: 13px; color: #555; margin-bottom: 4px; }
+        input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 4px;
+                margin-bottom: 16px; font-size: 14px; }
+        button { width: 100%; padding: 10px; background: #4a90d9; color: #fff;
+                 border: none; border-radius: 4px; font-size: 15px; cursor: pointer; }
+        button:hover { background: #357abd; }
+        .error { background: #fde8e8; color: #c0392b; padding: 10px; border-radius: 4px;
+                 margin-bottom: 16px; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>NSP-4-S2-S25App</h1>
+        <p class="subtitle">AI-Powered Q&amp;A Assistant</p>
+
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="error" id="error-msg">{{ messages[0] }}</div>
+        {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="/login">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username"
+                   placeholder="Enter username" required autocomplete="username">
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password"
+                   placeholder="Enter password" required autocomplete="current-password">
+            <button type="submit" id="login-btn">Login</button>
+        </form>
+    </div>
+</body>
+</html>
