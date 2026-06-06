@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        VENV_DIR    = 'venv'
+        VENV_DIR     = 'venv'
         HF_API_TOKEN = credentials('HF_API_TOKEN')
     }
 
@@ -16,10 +16,10 @@ pipeline {
 
         stage('Setup Python Environment') {
             steps {
-                sh '''
-                    python3 -m venv ${VENV_DIR}
-                    . ${VENV_DIR}/bin/activate
-                    pip install --upgrade pip
+                bat '''
+                    python -m venv %VENV_DIR%
+                    call %VENV_DIR%\\Scripts\\activate.bat
+                    python -m pip install --upgrade pip
                     pip install -r requirements.txt
                 '''
             }
@@ -27,26 +27,37 @@ pipeline {
 
         stage('Start App') {
             steps {
-                sh '''
-                    . ${VENV_DIR}/bin/activate
-                    nohup python3 app/app.py > app.log 2>&1 &
-                    echo $! > app.pid
-                    # Wait until the app is ready
-                    for i in $(seq 1 15); do
-                        curl -s http://localhost:5000/login > /dev/null && break
-                        sleep 1
-                    done
+                powershell '''
+                    $pythonExe = Join-Path $env:WORKSPACE "$env:VENV_DIR\\Scripts\\python.exe"
+                    $proc = Start-Process -FilePath $pythonExe `
+                        -ArgumentList "app/app.py" `
+                        -PassThru -NoNewWindow `
+                        -RedirectStandardOutput (Join-Path $env:WORKSPACE "app.log") `
+                        -RedirectStandardError  (Join-Path $env:WORKSPACE "app_err.log") `
+                        -WorkingDirectory $env:WORKSPACE
+                    $proc.Id | Out-File (Join-Path $env:WORKSPACE "app.pid") -Encoding ascii -NoNewline
+                    $ready = $false
+                    for ($i = 0; $i -lt 15; $i++) {
+                        try {
+                            Invoke-WebRequest -Uri http://localhost:5000/login -UseBasicParsing -ErrorAction Stop | Out-Null
+                            $ready = $true
+                            break
+                        } catch {
+                            Start-Sleep -Seconds 1
+                        }
+                    }
+                    if (-not $ready) { throw "App did not start within 15 seconds" }
                 '''
             }
         }
 
         stage('Run Tests') {
             steps {
-                sh '''
-                    . ${VENV_DIR}/bin/activate
-                    pytest tests/test_login.py -v \
-                        --html=report.html \
-                        --self-contained-html \
+                bat '''
+                    call %VENV_DIR%\\Scripts\\activate.bat
+                    pytest tests/test_login.py -v ^
+                        --html=report.html ^
+                        --self-contained-html ^
                         --junitxml=results.xml
                 '''
             }
@@ -55,11 +66,13 @@ pipeline {
 
     post {
         always {
-            sh '''
-                if [ -f app.pid ]; then
-                    kill $(cat app.pid) || true
-                    rm -f app.pid
-                fi
+            powershell '''
+                $pidFile = Join-Path $env:WORKSPACE "app.pid"
+                if (Test-Path $pidFile) {
+                    $appPid = Get-Content $pidFile
+                    Stop-Process -Id $appPid -Force -ErrorAction SilentlyContinue
+                    Remove-Item $pidFile -Force
+                }
             '''
             junit 'results.xml'
             publishHTML(target: [
@@ -70,7 +83,7 @@ pipeline {
                 reportFiles          : 'report.html',
                 reportName           : 'Selenium Test Report'
             ])
-            archiveArtifacts artifacts: 'app.log', allowEmptyArchive: true
+            archiveArtifacts artifacts: 'app.log,app_err.log', allowEmptyArchive: true
         }
         success {
             echo 'All tests passed!'
