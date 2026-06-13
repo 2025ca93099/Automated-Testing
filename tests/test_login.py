@@ -18,7 +18,7 @@ VALID_PASSWORD = "admin123"
 def driver():
     service = Service(ChromeDriverManager().install())
     options = webdriver.ChromeOptions()
-    # Headless is intentionally omitted so you can record the visual UI movement
+    options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
